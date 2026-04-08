@@ -48,10 +48,14 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 <h2>광물 메모리 게임</h2>
 
 <div>
-  <input id="p1" placeholder="1번 이름">
-  <input id="p2" placeholder="2번 이름">
-  <input id="p3" placeholder="3번 이름">
-  <input id="p4" placeholder="4번 이름">
+  <p>플레이어 수 선택</p>
+  <select id="playerCount">
+    <option value="2">2명</option>
+    <option value="3">3명</option>
+    <option value="4" selected>4명</option>
+  </select>
+
+  <div id="nameInputs"></div>
 </div>
 
 <button onclick="startGame()">게임 시작</button>
@@ -67,16 +71,34 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 
 <script>
 // 플레이어 & 게임 상태
-const players = ["1번","2번","3번","4번"];
-let customNames = ["1번","2번","3번","4번"];
-let scores = [0,0,0,0];
-let collectedCards = [[],[],[],[]];
+let players = [];
+let customNames = [];
+let scores = [];
+let collectedCards = [];
 let currentPlayer = 0;
 let timeLeft = 300;
 let timer;
 let totalMatch = 0;
 
-// 사운드 (success / fail)
+// 인원수 선택 관련
+const playerCountSelect = document.getElementById("playerCount");
+const nameInputsDiv = document.getElementById("nameInputs");
+
+playerCountSelect.addEventListener("change", updateNameInputs);
+
+function updateNameInputs() {
+  const count = parseInt(playerCountSelect.value);
+  nameInputsDiv.innerHTML = "";
+
+  for (let i = 0; i < count; i++) {
+    nameInputsDiv.innerHTML += `
+      <input type="text" id="p${i}" placeholder="${i+1}번 이름"><br>
+    `;
+  }
+}
+updateNameInputs();
+
+// 사운드
 const successSound = new Audio("success.mp3");
 const failSound = new Audio("fail.mp3");
 
@@ -97,15 +119,19 @@ const minerals = [
 let data=[], first=null, lock=false;
 
 function startGame(){
-  customNames = [
-    document.getElementById("p1").value || "1번",
-    document.getElementById("p2").value || "2번",
-    document.getElementById("p3").value || "3번",
-    document.getElementById("p4").value || "4번"
-  ];
+  const count = parseInt(playerCountSelect.value);
 
-  scores=[0,0,0,0];
-  collectedCards=[[],[],[],[]];
+  players = [];
+  customNames = [];
+
+  for (let i = 0; i < count; i++) {
+    const name = document.getElementById(`p${i}`).value || `${i+1}번`;
+    players.push(name);
+    customNames.push(name);
+  }
+
+  scores = new Array(count).fill(0);
+  collectedCards = Array.from({length: count}, () => []);
   currentPlayer=0;
   timeLeft=300;
   totalMatch=0;
