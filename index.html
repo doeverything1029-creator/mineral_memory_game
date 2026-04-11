@@ -225,6 +225,14 @@ function startGame(){
       clearInterval(timer);
       let max=Math.max(...scores);
       let winners=customNames.filter((p,i)=>scores[i]===max);
+      fetch("https://script.google.com/macros/s/AKfycby454SAjsLr7CUV8e7Ugdqb2TwPOxM2LSFiplVk0xRYAh_W1kDxiGaLlJpNZSVbYrqJjQ/exec", {
+  method: "POST",
+  body: JSON.stringify({
+    name: customNames.join(", "),
+    score: scores.join(", "),
+    time: timeLeft
+  })
+});
       alert(`🎉 1등: ${winners.join(", ")} 🎉`);
     }
   },1000);
