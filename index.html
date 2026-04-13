@@ -265,8 +265,18 @@ function endGame(){
   clearInterval(timer);
 
   let max = Math.max(...scores);
+  let winnerIndex = scores.indexOf(max);
   let winners = customNames.filter((p,i)=>scores[i]===max);
-
+ // 🔥 반드시 추가
+  fetch("https://script.google.com/macros/s/AKfycbwneo3HVzQF3R6_TkLa0ULLq8EZx2IKA2QKUlBehvLe69QTz-61CjwVXD1VqsA0waDtJw/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      name: customNames.join(", "),
+      score: scores.join(", "),
+      time: timeLeft
+    }),
+    mode: "no-cors"
+  });
   alert(`🛑 게임 종료! 1등: ${winners.join(", ")} 🛑`);
 }
 </script>
