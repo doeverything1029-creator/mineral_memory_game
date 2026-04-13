@@ -10,7 +10,7 @@ h2 { margin-top:20px; }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr); /* ✅ 8열 */
+  grid-template-columns: repeat(8, 1fr);
   gap: 8px;
   max-width: 1000px;
   margin: 20px auto;
@@ -123,13 +123,6 @@ const minerals = [
  {name:"방해석", img:"calcite.jpg", group:"A", t1:"조흔색 흰색, 석영보다 무르다", t2:"염산 → 거품 발생"},
  {name:"자철석", img:"magnetite.jpg", group:"B", t1:"검은색, 자성 O", t2:"자석에 붙음"},
  {name:"석영", img:"quartz.jpg", group:"C", t1:"모래의 주성분", t2:"염산반응 X"},
- {name:"황동석", img:"chalcopyrite.jpg", group:"D", t1:"구리를 얻을 수 있음", t2:"노란색"},
- {name:"황철석", img:"pyrite.jpg", group:"E", t1:"바보금", t2:"검은색 조흔"},
- {name:"흑운모", img:"biotite.jpg", group:"F", t1:"얇게 쪼개짐", t2:"검은색"},
- {name:"적철석", img:"hematite.jpg", group:"G", t1:"적갈색 조흔", t2:"자성 X"},
- {name:"장석", img:"feldspar.jpg", group:"H", t1:"도자기 원료", t2:"지각 구성"},
- {name:"감람석", img:"olivine.jpg", group:"I", t1:"녹색", t2:"맨틀에 많음"},
- {name:"각섬석", img:"amphibole.jpg", group:"J", t1:"녹갈색", t2:"기둥 모양"}
 ];
 
 let data=[], first=null, lock=false;
@@ -154,7 +147,6 @@ function startGame(){
   totalMatch=0;
 
   document.getElementById("game").innerHTML="";
-  document.getElementById("collected").innerHTML="";
   data=[];
 
   minerals.forEach(m=>{
@@ -174,7 +166,7 @@ function startGame(){
     div.innerText="?";
 
     div.onclick=()=>{
-      if(lock || div.classList.contains("matched") || div.classList.contains("revealed")) return;
+      if(lock) return;
 
       div.classList.add("revealed");
 
@@ -189,36 +181,19 @@ function startGame(){
       }else{
         lock=true;
 
-        const valid =
-          first.group===item.group &&
-          ((first.type==="name"&&item.type==="desc") ||
-           (first.type==="desc"&&item.type==="name") ||
-           (first.type==="img"&&item.type==="desc") ||
-           (first.type==="desc"&&item.type==="img"));
-
-        if(valid){
+        if(first.group===item.group){
           successSound.play();
-          first.div.classList.add("matched");
-          div.classList.add("matched");
           scores[currentPlayer]++;
-          totalMatch++;
-          first=null;
-          lock=false;
-          update();
-
         }else{
           failSound.play();
-          setTimeout(()=>{
-            first.div.innerText="?";
-            div.innerText="?";
-            first.div.classList.remove("revealed");
-            div.classList.remove("revealed");
-            first=null;
-            lock=false;
-            currentPlayer=(currentPlayer+1)%players.length;
-            update();
-          },800);
         }
+
+        setTimeout(()=>{
+          first=null;
+          lock=false;
+          currentPlayer=(currentPlayer+1)%players.length;
+          update();
+        },800);
       }
     };
 
@@ -226,27 +201,6 @@ function startGame(){
   });
 
   update();
-
-  clearInterval(timer);
-  timer=setInterval(()=>{
-    timeLeft--;
-    document.getElementById("timer").innerText=`남은 시간: ${timeLeft}초`;
-
-    if(timeLeft<=0){
-      clearInterval(timer);
-
-      fetch("https://script.google.com/macros/s/AKfycby454SAjsLr7CUV8e7Ugdqb2TwPOxM2LSFiplVk0xRYAh_W1kDxiGaLlJpNZSVbYrqJjQ/exec", {
-        method: "POST",
-        body: JSON.stringify({
-          name: customNames.join(", "),
-          score: scores.map(s=>Number(s)).join(", "), /* ✅ 핵심 수정 */
-          time: timeLeft
-        })
-      });
-
-      alert("게임 종료!");
-    }
-  },1000);
 }
 
 function update(){
