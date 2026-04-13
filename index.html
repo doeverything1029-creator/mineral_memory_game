@@ -5,55 +5,93 @@
 <title>광물 메모리 게임</title>
 
 <style>
-body { font-family: sans-serif; text-align: center; background:#f5f5f5; }
-.grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; max-width: 1000px; margin: 20px auto; }
-.card { background: #ccc; min-height: 90px; padding: 5px; cursor: pointer; border-radius: 10px; font-size: 13px; display: flex; justify-content: center; align-items: center; }
+body { font-family: sans-serif; text-align: center; background:#f5f5f5; margin:0; }
+.container { max-width: 500px; margin: auto; padding: 15px; }
+
+input, select, button {
+  width: 100%;
+  padding: 12px;
+  margin: 5px 0;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button { background: #4CAF50; color: white; border: none; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.card {
+  background: #ccc;
+  height: 70px;
+  border-radius: 10px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
 .revealed { background: #fff; }
 .matched { background: #a0e7a0; }
-img { width: 100%; height: 80px; object-fit: contain; background: white; }
-.playerBox { border: 2px solid #aaa; margin: 5px; padding: 5px; border-radius: 10px; }
-.cardRow { display: flex; flex-wrap: wrap; gap: 6px; }
-.miniCard { border: 1px solid #999; border-radius: 6px; padding: 4px; font-size: 11px; background: #f9f9f9; min-width: 90px; }
+
+.infoBox {
+  background:white;
+  padding:10px;
+  border-radius:10px;
+  margin-top:10px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>광물 메모리 게임</h2>
+<div class="container">
 
-<p>
-반: <input type="text" id="classInput" placeholder="예: 2학년 3반">
-번호: <input type="text" id="numInput" placeholder="예: 15">
-</p>
+<h2>🧠 광물 게임</h2>
 
-<div>
-  <p>플레이어 수 선택</p>
-  <select id="playerCount">
-    <option value="2">2명</option>
-    <option value="3">3명</option>
-    <option value="4" selected>4명</option>
-  </select>
-  <div id="nameInputs"></div>
+<!-- 🔥 반 드롭다운 -->
+<select id="classInput">
+  <option value="">반 선택</option>
+  <option>1반</option>
+  <option>2반</option>
+  <option>3반</option>
+  <option>4반</option>
+  <option>5반</option>
+  <option>6반</option>
+</select>
+
+<input type="text" id="numInput" placeholder="번호 입력">
+
+<select id="playerCount">
+  <option value="2">2명</option>
+  <option value="3">3명</option>
+  <option value="4" selected>4명</option>
+</select>
+
+<div id="nameInputs"></div>
+
+<button onclick="startGame()">🎮 게임 시작</button>
+<button onclick="submitResult()">📤 결과 제출</button>
+
+<div class="infoBox">
+  <p id="timer">⏱ 300초</p>
+  <p id="turn"></p>
+  <p id="score"></p>
 </div>
-
-<button onclick="startGame()">게임 시작</button>
-<button onclick="submitResult()">결과 제출</button>
-
-<p id="timer">남은 시간: 300초</p>
-<p id="turn"></p>
-<div id="score"></div>
 
 <div class="grid" id="game"></div>
 
-<h3>획득 카드</h3>
-<div id="collected"></div>
+</div>
 
 <script>
-let players=[], customNames=[], scores=[], collectedCards=[];
-let currentPlayer=0, timeLeft=300, timer, totalMatch=0;
+let players=[], customNames=[], scores=[];
+let currentPlayer=0, timeLeft=300, timer;
 let submitted=false;
 
-const URL = "https://script.google.com/macros/s/AKfycby454SAjsLr7CUV8e7Ugdqb2TwPOxM2LSFiplVk0xRYAh_W1kDxiGaLlJpNZSVbYrqJjQ/exec";
+const URL="여기에_너_URL";
 
 const playerCountSelect=document.getElementById("playerCount");
 const nameInputsDiv=document.getElementById("nameInputs");
@@ -64,52 +102,32 @@ function updateNameInputs(){
   const count=parseInt(playerCountSelect.value);
   nameInputsDiv.innerHTML="";
   for(let i=0;i<count;i++){
-    nameInputsDiv.innerHTML+=`<input type="text" id="p${i}" placeholder="${i+1}번 이름"><br>`;
+    nameInputsDiv.innerHTML+=`<input type="text" id="p${i}" placeholder="${i+1}번 이름">`;
   }
 }
 updateNameInputs();
 
-const minerals=[
-{name:"방해석",group:"A",t1:"조흔색 흰색",t2:"염산 반응"},
-{name:"자철석",group:"B",t1:"검은색",t2:"자성"},
-{name:"석영",group:"C",t1:"단단함",t2:"투명"},
-{name:"황동석",group:"D",t1:"노란색",t2:"구리"},
-{name:"황철석",group:"E",t1:"바보금",t2:"노란색"},
-{name:"흑운모",group:"F",t1:"쪼개짐",t2:"검은색"},
-{name:"적철석",group:"G",t1:"적갈색",t2:"철"},
-{name:"장석",group:"H",t1:"흰색",t2:"도자기"},
-{name:"감람석",group:"I",t1:"녹색",t2:"맨틀"},
-{name:"각섬석",group:"J",t1:"기둥",t2:"녹갈색"}
-];
+const minerals=["방해석","자철석","석영","황동석","황철석","흑운모","적철석","장석"];
 
-let data=[],first=null,lock=false;
+let data=[], first=null, lock=false;
 
 function startGame(){
   submitted=false;
-  const count=parseInt(playerCountSelect.value);
 
+  const count=parseInt(playerCountSelect.value);
   players=[]; customNames=[];
+
   for(let i=0;i<count;i++){
     let name=document.getElementById(`p${i}`).value||`${i+1}번`;
     players.push(name); customNames.push(name);
   }
 
   scores=new Array(count).fill(0);
-  collectedCards=Array.from({length:count},()=>[]);
-  currentPlayer=0; timeLeft=300; totalMatch=0;
+  currentPlayer=0;
+  timeLeft=300;
 
   document.getElementById("game").innerHTML="";
-  data=[];
-
-  minerals.forEach(m=>{
-    data.push(
-      {type:"name",content:m.name,group:m.group},
-      {type:"desc",content:m.t1,group:m.group},
-      {type:"desc",content:m.t2,group:m.group}
-    );
-  });
-
-  data.sort(()=>Math.random()-0.5);
+  data=[...minerals,...minerals].sort(()=>Math.random()-0.5);
 
   data.forEach(item=>{
     const div=document.createElement("div");
@@ -120,26 +138,19 @@ function startGame(){
       if(lock||div.classList.contains("matched")||div.classList.contains("revealed"))return;
 
       div.classList.add("revealed");
-      div.innerText=item.content;
+      div.innerText=item;
 
       if(!first){
-        first={div,group:item.group,type:item.type};
+        first={div,item};
       }else{
         lock=true;
 
-        if(first.group===item.group){
+        if(first.item===item){
           div.classList.add("matched");
           first.div.classList.add("matched");
           scores[currentPlayer]++;
-          totalMatch++;
           first=null; lock=false;
           update();
-
-          if(totalMatch===minerals.length){
-            clearInterval(timer);
-            alert("게임 완료! 제출 버튼 눌러!");
-          }
-
         }else{
           setTimeout(()=>{
             div.innerText="?";
@@ -162,37 +173,37 @@ function startGame(){
   clearInterval(timer);
   timer=setInterval(()=>{
     timeLeft--;
-    document.getElementById("timer").innerText=`남은 시간: ${timeLeft}초`;
+    document.getElementById("timer").innerText=`⏱ ${timeLeft}초`;
     if(timeLeft<=0){
       clearInterval(timer);
-      alert("시간 종료! 제출 버튼 눌러!");
+      alert("시간 종료! 제출하세요");
     }
   },1000);
 }
 
 function update(){
-  document.getElementById("turn").innerText=`현재 턴: ${customNames[currentPlayer]}`;
+  document.getElementById("turn").innerText=`👉 ${customNames[currentPlayer]} 턴`;
   document.getElementById("score").innerText=customNames.map((p,i)=>`${p}:${scores[i]}`).join(" | ");
 }
 
 function submitResult(){
   if(submitted){
-    alert("이미 제출했어!");
+    alert("이미 제출함!");
     return;
   }
 
-  const className=document.getElementById("classInput").value||"미입력";
+  const className=document.getElementById("classInput").value||"미선택";
   const number=document.getElementById("numInput").value||"미입력";
 
   customNames.forEach((name,i)=>{
     fetch(URL,{
       method:"POST",
       body:JSON.stringify({
-        class: className,
-        number: number,
-        name: name,
-        score: scores[i],
-        time: timeLeft
+        class:className,
+        number:number,
+        name:name,
+        score:scores[i],
+        time:timeLeft
       })
     });
   });
