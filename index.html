@@ -268,7 +268,7 @@ function endGame(){
   let winnerIndex = scores.indexOf(max);
   let winners = customNames.filter((p,i)=>scores[i]===max);
  // 🔥 반드시 추가
-  fetch("https://script.google.com/macros/s/AKfycbwneo3HVzQF3R6_TkLa0ULLq8EZx2IKA2QKUlBehvLe69QTz-61CjwVXD1VqsA0waDtJw/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbwiRztW7dC0EJf21awjUvTlS2EopIN3cPlN5bcwJtqcLebXnhC83NJDUPIMTjhs60Je6w/exec", {
     method: "POST",
     body: JSON.stringify({
       name: customNames.join(", "),
