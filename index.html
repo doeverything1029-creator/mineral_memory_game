@@ -6,6 +6,7 @@
 
 <style>
 body { font-family: sans-serif; text-align: center; background:#f5f5f5; }
+
 h2 { margin-top:20px; }
 
 .grid {
@@ -32,34 +33,13 @@ h2 { margin-top:20px; }
 .revealed { background: #fff; }
 .matched { background: #a0e7a0; }
 
-img {
-  width: 100%;
-  height: 80px;
-  object-fit: contain;
-  background: white;
-}
+img { width: 100%; height: 80px; object-fit: contain; background: white; }
 
-.playerBox {
-  border: 2px solid #aaa;
-  margin: 5px;
-  padding: 5px;
-  border-radius: 10px;
-}
+.playerBox { border: 2px solid #aaa; margin: 5px; padding: 5px; border-radius: 10px; }
 
-.cardRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.cardRow { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.miniCard {
-  border: 1px solid #999;
-  border-radius: 6px;
-  padding: 4px;
-  font-size: 11px;
-  background: #f9f9f9;
-  min-width: 90px;
-}
+.miniCard { border: 1px solid #999; border-radius: 6px; padding: 4px; font-size: 11px; background: #f9f9f9; min-width: 90px; }
 </style>
 </head>
 
@@ -82,7 +62,7 @@ img {
 
 <p id="timer">남은 시간: 300초</p>
 <p id="turn"></p>
-<p id="score"></p>
+<div id="score"></div>
 
 <div class="grid" id="game"></div>
 
@@ -90,6 +70,7 @@ img {
 <div id="collected"></div>
 
 <script>
+// 플레이어 & 게임 상태
 let players = [];
 let customNames = [];
 let scores = [];
@@ -99,6 +80,7 @@ let timeLeft = 300;
 let timer;
 let totalMatch = 0;
 
+// 인원수 선택 관련
 const playerCountSelect = document.getElementById("playerCount");
 const nameInputsDiv = document.getElementById("nameInputs");
 
@@ -116,20 +98,22 @@ function updateNameInputs() {
 }
 updateNameInputs();
 
+// 사운드
 const successSound = new Audio("success.mp3");
 const failSound = new Audio("fail.mp3");
 
+// 광물 데이터
 const minerals = [
- {name:"방해석", img:"calcite.jpg", group:"A", t1:"조흔색 흰색, 석영보다 무르다", t2:"염산 → 거품 발생"},
- {name:"자철석", img:"magnetite.jpg", group:"B", t1:"검은색, 자성 O", t2:"자석에 붙음"},
- {name:"석영", img:"quartz.jpg", group:"C", t1:"모래의 주성분", t2:"염산반응 X"},
- {name:"황동석", img:"chalcopyrite.jpg", group:"D", t1:"구리를 얻을 수 있음", t2:"광물의 색 = 노란색 (조흔색 = 녹흑색)"},
- {name:"황철석", img:"pyrite.jpg", group:"E", t1:"광물의 색 = 노란색 (조흔색 = 검은색)", t2:"바보금"},
- {name:"흑운모", img:"biotite.jpg", group:"F", t1:"얇은 판으로 잘 쪼개짐", t2:"광물의 색 = 검은색 (조흔색 = 흰색)"},
- {name:"적철석", img:"hematite.jpg", group:"G", t1:"광물의 색 = 검은색 (조흔색 = 적갈색)", t2:"검은색, 자성 X, 쪼개짐 X"},
- {name:"장석", img:"feldspar.jpg", group:"H", t1:"흰색 또는 분홍색, 도자기 원료", t2:"가장 많은 비율로 지각(암석)에 포함"},
- {name:"감람석", img:"olivine.jpg", group:"I", t1:"지각보다는 맨틀에 많은 광물", t2:"녹색"},
- {name:"각섬석", img:"amphibole.jpg", group:"J", t1:"녹갈색", t2:"길고 기둥 모양"} ];
+  {name:"방해석", img:"calcite.jpg", group:"A", t1:"조흔색 흰색, 석영보다 무르다", t2:"염산 → 거품 발생"},
+  {name:"자철석", img:"magnetite.jpg", group:"B", t1:"광물의 색 = 검은색 (조흔색 = 검은색)", t2:"자성 O (자석에 붙음)"},
+  {name:"석영", img:"quartz.jpg", group:"C", t1:"모래의 주성분, 방해석보다 단단", t2:"투명, 염산반응 X"},
+  {name:"황동석", img:"chalcopyrite.jpg", group:"D", t1:"구리를 얻을 수 있음", t2:"광물의 색 = 노란색 (조흔색 = 녹흑색)"},
+  {name:"황철석", img:"pyrite.jpg", group:"E", t1:"광물의 색 = 노란색 (조흔색 = 검은색)", t2:"바보금"},
+  {name:"흑운모", img:"biotite.jpg", group:"F", t1:"얇은 판으로 잘 쪼개짐", t2:"광물의 색 = 검은색 (조흔색 = 흰색)"},
+  {name:"적철석", img:"hematite.jpg", group:"G", t1:"광물의 색 = 검은색 (조흔색 = 적갈색)", t2:"검은색, 자성 X, 쪼개짐 X"},
+  {name:"장석", img:"feldspar.jpg", group:"H", t1:"흰색 또는 분홍색, 도자기 원료", t2:"가장 많은 비율로 지각(암석)에 포함"},
+  {name:"감람석", img:"olivine.jpg", group:"I", t1:"지각보다는 맨틀에 많은 광물", t2:"녹색"},
+  {name:"각섬석", img:"amphibole.jpg", group:"J", t1:"녹갈색", t2:"길고 기둥 모양"}
 ];
 
 let data=[], first=null, lock=false;
@@ -148,14 +132,14 @@ function startGame(){
 
   scores = new Array(count).fill(0);
   collectedCards = Array.from({length: count}, () => []);
-
   currentPlayer=0;
   timeLeft=300;
   totalMatch=0;
 
   document.getElementById("game").innerHTML="";
-  data=[];
+  document.getElementById("collected").innerHTML="";
 
+  data=[];
   minerals.forEach(m=>{
     data.push(
       {type:"name",content:m.name,group:m.group},
@@ -173,13 +157,13 @@ function startGame(){
     div.innerText="?";
 
     div.onclick=()=>{
-      if(lock) return;
+      if(lock || div.classList.contains("matched") || div.classList.contains("revealed")) return;
 
       div.classList.add("revealed");
 
       if(item.type==="img"){
         div.innerHTML=`<img src="${item.content}">`;
-      } else {
+      }else{
         div.innerText=item.content;
       }
 
@@ -187,20 +171,45 @@ function startGame(){
         first={div,group:item.group,type:item.type};
       }else{
         lock=true;
+        const valid =
+          first.group===item.group &&
+          ((first.type==="name"&&item.type==="desc") ||
+           (first.type==="desc"&&item.type==="name") ||
+           (first.type==="img"&&item.type==="desc") ||
+           (first.type==="desc"&&item.type==="img"));
 
-        if(first.group===item.group){
+        if(valid){
           successSound.play();
+          first.div.classList.add("matched");
+          div.classList.add("matched");
           scores[currentPlayer]++;
-        }else{
-          failSound.play();
-        }
-
-        setTimeout(()=>{
+          totalMatch++;
+          const mineral = minerals.find(m=>m.group===item.group);
+          collectedCards[currentPlayer].push(mineral);
           first=null;
           lock=false;
-          currentPlayer=(currentPlayer+1)%players.length;
           update();
-        },800);
+          updateCollected();
+
+          if(totalMatch === minerals.length * 2){
+            clearInterval(timer);
+            let max=Math.max(...scores);
+            let winners=customNames.filter((p,i)=>scores[i]===max);
+            alert(`🎉 게임 완료! 1등: ${winners.join(", ")} 🎉`);
+          }
+        }else{
+          failSound.play();
+          setTimeout(()=>{
+            first.div.innerText="?";
+            div.innerText="?";
+            first.div.classList.remove("revealed");
+            div.classList.remove("revealed");
+            first=null;
+            lock=false;
+            currentPlayer=(currentPlayer+1)%players.length;
+            update();
+          },800);
+        }
       }
     };
 
@@ -208,12 +217,41 @@ function startGame(){
   });
 
   update();
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    timeLeft--;
+    document.getElementById("timer").innerText=`남은 시간: ${timeLeft}초`;
+    if(timeLeft<=0){
+      clearInterval(timer);
+      let max=Math.max(...scores);
+      let winners=customNames.filter((p,i)=>scores[i]===max);
+      alert(`🎉 1등: ${winners.join(", ")} 🎉`);
+    }
+  },1000);
 }
 
 function update(){
   document.getElementById("turn").innerText=`현재 턴: ${customNames[currentPlayer]}`;
-  document.getElementById("score").innerText=
-    customNames.map((p,i)=>`${p}:${scores[i]}`).join(" | ");
+  document.getElementById("score").innerText=customNames.map((p,i)=>`${p}:${scores[i]}`).join(" | ");
+}
+
+function updateCollected(){
+  const container=document.getElementById("collected");
+  container.innerHTML="";
+  let order = customNames.map((p,i)=>({p,i,score:scores[i]}))
+                         .sort((a,b)=>b.score-a.score);
+  order.forEach(o=>{
+    const box=document.createElement("div");
+    box.className="playerBox";
+    let title=`<b>${o.p} (${o.score}점)</b>`;
+    let row = `<div class="cardRow">`;
+    collectedCards[o.i].forEach(m=>{
+      row += `<div class="miniCard">${m.name}<br>${m.t1}<br>${m.t2}</div>`;
+    });
+    row += "</div>";
+    box.innerHTML = title + row;
+    container.appendChild(box);
+  });
 }
 </script>
 
