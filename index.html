@@ -60,6 +60,7 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 
 <button onclick="startGame()">게임 시작</button>
 <button onclick="endGame()">게임 종료</button>
+
 <p id="timer">남은 시간: 300초</p>
 <p id="turn"></p>
 <div id="score"></div>
@@ -70,6 +71,10 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 <div id="collected"></div>
 
 <script>
+
+// 🔥 URL 하나로 통일
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwneo3HVzQF3R6_TkLa0ULLq8EZx2IKA2QKUlBehvLe69QTz-61CjwVXD1VqsA0waDtJw/exec";
+
 // 플레이어 & 게임 상태
 let players = [];
 let customNames = [];
@@ -225,14 +230,17 @@ function startGame(){
       clearInterval(timer);
       let max=Math.max(...scores);
       let winners=customNames.filter((p,i)=>scores[i]===max);
-     fetch("https://script.google.com/macros/s/AKfycbwneo3HVzQF3R6_TkLa0ULLq8EZx2IKA2QKUlBehvLe69QTz-61CjwVXD1VqsA0waDtJw/exec", {
-  method: "POST",
-  body: JSON.stringify({
-    name: customNames.join(", "),
-    score: scores.join(", "),
-    time: timeLeft
-  })
-});
+
+      fetch(SHEET_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          name: customNames.join(", "),
+          score: scores.join(", "),
+          time: timeLeft
+        }),
+        mode: "no-cors"
+      });
+
       alert(`🎉 1등: ${winners.join(", ")} 🎉`);
     }
   },1000);
@@ -261,14 +269,14 @@ function updateCollected(){
     container.appendChild(box);
   });
 }
+
 function endGame(){
   clearInterval(timer);
 
   let max = Math.max(...scores);
-  let winnerIndex = scores.indexOf(max);
   let winners = customNames.filter((p,i)=>scores[i]===max);
- // 🔥 반드시 추가
-  fetch("https://script.google.com/macros/s/AKfycbwiRztW7dC0EJf21awjUvTlS2EopIN3cPlN5bcwJtqcLebXnhC83NJDUPIMTjhs60Je6w/exec", {
+
+  fetch(SHEET_URL, {
     method: "POST",
     body: JSON.stringify({
       name: customNames.join(", "),
@@ -277,6 +285,7 @@ function endGame(){
     }),
     mode: "no-cors"
   });
+
   alert(`🛑 게임 종료! 1등: ${winners.join(", ")} 🛑`);
 }
 </script>
