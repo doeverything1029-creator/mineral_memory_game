@@ -6,39 +6,13 @@
 
 <style>
 body { font-family: sans-serif; text-align: center; background:#f5f5f5; }
-
-h2 { margin-top:20px; }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-  max-width: 1000px;
-  margin: 20px auto;
-}
-
-.card {
-  background: #ccc;
-  min-height: 90px;
-  padding: 5px;
-  cursor: pointer;
-  border-radius: 10px;
-  font-size: 13px;
-  word-break: keep-all;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
+.grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; max-width: 1000px; margin: 20px auto; }
+.card { background: #ccc; min-height: 90px; padding: 5px; cursor: pointer; border-radius: 10px; font-size: 13px; display: flex; justify-content: center; align-items: center; }
 .revealed { background: #fff; }
 .matched { background: #a0e7a0; }
-
 img { width: 100%; height: 80px; object-fit: contain; background: white; }
-
 .playerBox { border: 2px solid #aaa; margin: 5px; padding: 5px; border-radius: 10px; }
-
 .cardRow { display: flex; flex-wrap: wrap; gap: 6px; }
-
 .miniCard { border: 1px solid #999; border-radius: 6px; padding: 4px; font-size: 11px; background: #f9f9f9; min-width: 90px; }
 </style>
 </head>
@@ -47,6 +21,11 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 
 <h2>광물 메모리 게임</h2>
 
+<p>
+반: <input type="text" id="classInput" placeholder="예: 2학년 3반">
+번호: <input type="text" id="numInput" placeholder="예: 15">
+</p>
+
 <div>
   <p>플레이어 수 선택</p>
   <select id="playerCount">
@@ -54,11 +33,11 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
     <option value="3">3명</option>
     <option value="4" selected>4명</option>
   </select>
-
   <div id="nameInputs"></div>
 </div>
 
 <button onclick="startGame()">게임 시작</button>
+<button onclick="submitResult()">결과 제출</button>
 
 <p id="timer">남은 시간: 300초</p>
 <p id="turn"></p>
@@ -66,84 +45,65 @@ img { width: 100%; height: 80px; object-fit: contain; background: white; }
 
 <div class="grid" id="game"></div>
 
-<h3>획득 카드 (점수순)</h3>
+<h3>획득 카드</h3>
 <div id="collected"></div>
 
 <script>
-// 플레이어 & 게임 상태
-let players = [];
-let customNames = [];
-let scores = [];
-let collectedCards = [];
-let currentPlayer = 0;
-let timeLeft = 300;
-let timer;
-let totalMatch = 0;
+let players=[], customNames=[], scores=[], collectedCards=[];
+let currentPlayer=0, timeLeft=300, timer, totalMatch=0;
+let submitted=false;
 
-// 인원수 선택 관련
-const playerCountSelect = document.getElementById("playerCount");
-const nameInputsDiv = document.getElementById("nameInputs");
+const URL = "https://script.google.com/macros/s/AKfycby454SAjsLr7CUV8e7Ugdqb2TwPOxM2LSFiplVk0xRYAh_W1kDxiGaLlJpNZSVbYrqJjQ/exec";
+
+const playerCountSelect=document.getElementById("playerCount");
+const nameInputsDiv=document.getElementById("nameInputs");
 
 playerCountSelect.addEventListener("change", updateNameInputs);
 
-function updateNameInputs() {
-  const count = parseInt(playerCountSelect.value);
-  nameInputsDiv.innerHTML = "";
-
-  for (let i = 0; i < count; i++) {
-    nameInputsDiv.innerHTML += `
-      <input type="text" id="p${i}" placeholder="${i+1}번 이름"><br>
-    `;
+function updateNameInputs(){
+  const count=parseInt(playerCountSelect.value);
+  nameInputsDiv.innerHTML="";
+  for(let i=0;i<count;i++){
+    nameInputsDiv.innerHTML+=`<input type="text" id="p${i}" placeholder="${i+1}번 이름"><br>`;
   }
 }
 updateNameInputs();
 
-// 사운드
-const successSound = new Audio("success.mp3");
-const failSound = new Audio("fail.mp3");
-
-// 광물 데이터
-const minerals = [
-  {name:"방해석", img:"calcite.jpg", group:"A", t1:"조흔색 흰색, 석영보다 무르다", t2:"염산 → 거품 발생"},
-  {name:"자철석", img:"magnetite.jpg", group:"B", t1:"광물의 색 = 검은색 (조흔색 = 검은색)", t2:"자성 O (자석에 붙음)"},
-  {name:"석영", img:"quartz.jpg", group:"C", t1:"모래의 주성분, 방해석보다 단단", t2:"투명, 염산반응 X"},
-  {name:"황동석", img:"chalcopyrite.jpg", group:"D", t1:"구리를 얻을 수 있음", t2:"광물의 색 = 노란색 (조흔색 = 녹흑색)"},
-  {name:"황철석", img:"pyrite.jpg", group:"E", t1:"광물의 색 = 노란색 (조흔색 = 검은색)", t2:"바보금"},
-  {name:"흑운모", img:"biotite.jpg", group:"F", t1:"얇은 판으로 잘 쪼개짐", t2:"광물의 색 = 검은색 (조흔색 = 흰색)"},
-  {name:"적철석", img:"hematite.jpg", group:"G", t1:"광물의 색 = 검은색 (조흔색 = 적갈색)", t2:"검은색, 자성 X, 쪼개짐 X"},
-  {name:"장석", img:"feldspar.jpg", group:"H", t1:"흰색 또는 분홍색, 도자기 원료", t2:"가장 많은 비율로 지각(암석)에 포함"},
-  {name:"감람석", img:"olivine.jpg", group:"I", t1:"지각보다는 맨틀에 많은 광물", t2:"녹색"},
-  {name:"각섬석", img:"amphibole.jpg", group:"J", t1:"녹갈색", t2:"길고 기둥 모양"}
+const minerals=[
+{name:"방해석",group:"A",t1:"조흔색 흰색",t2:"염산 반응"},
+{name:"자철석",group:"B",t1:"검은색",t2:"자성"},
+{name:"석영",group:"C",t1:"단단함",t2:"투명"},
+{name:"황동석",group:"D",t1:"노란색",t2:"구리"},
+{name:"황철석",group:"E",t1:"바보금",t2:"노란색"},
+{name:"흑운모",group:"F",t1:"쪼개짐",t2:"검은색"},
+{name:"적철석",group:"G",t1:"적갈색",t2:"철"},
+{name:"장석",group:"H",t1:"흰색",t2:"도자기"},
+{name:"감람석",group:"I",t1:"녹색",t2:"맨틀"},
+{name:"각섬석",group:"J",t1:"기둥",t2:"녹갈색"}
 ];
 
-let data=[], first=null, lock=false;
+let data=[],first=null,lock=false;
 
 function startGame(){
-  const count = parseInt(playerCountSelect.value);
+  submitted=false;
+  const count=parseInt(playerCountSelect.value);
 
-  players = [];
-  customNames = [];
-
-  for (let i = 0; i < count; i++) {
-    const name = document.getElementById(`p${i}`).value || `${i+1}번`;
-    players.push(name);
-    customNames.push(name);
+  players=[]; customNames=[];
+  for(let i=0;i<count;i++){
+    let name=document.getElementById(`p${i}`).value||`${i+1}번`;
+    players.push(name); customNames.push(name);
   }
 
-  scores = new Array(count).fill(0);
-  collectedCards = Array.from({length: count}, () => []);
-  currentPlayer=0;
-  timeLeft=300;
-  totalMatch=0;
+  scores=new Array(count).fill(0);
+  collectedCards=Array.from({length:count},()=>[]);
+  currentPlayer=0; timeLeft=300; totalMatch=0;
 
   document.getElementById("game").innerHTML="";
-  document.getElementById("collected").innerHTML="";
-
   data=[];
+
   minerals.forEach(m=>{
     data.push(
       {type:"name",content:m.name,group:m.group},
-      {type:"img",content:m.img,group:m.group},
       {type:"desc",content:m.t1,group:m.group},
       {type:"desc",content:m.t2,group:m.group}
     );
@@ -157,58 +117,39 @@ function startGame(){
     div.innerText="?";
 
     div.onclick=()=>{
-      if(lock || div.classList.contains("matched") || div.classList.contains("revealed")) return;
+      if(lock||div.classList.contains("matched")||div.classList.contains("revealed"))return;
 
       div.classList.add("revealed");
-
-      if(item.type==="img"){
-        div.innerHTML=`<img src="${item.content}">`;
-      }else{
-        div.innerText=item.content;
-      }
+      div.innerText=item.content;
 
       if(!first){
         first={div,group:item.group,type:item.type};
       }else{
         lock=true;
-        const valid =
-          first.group===item.group &&
-          ((first.type==="name"&&item.type==="desc") ||
-           (first.type==="desc"&&item.type==="name") ||
-           (first.type==="img"&&item.type==="desc") ||
-           (first.type==="desc"&&item.type==="img"));
 
-        if(valid){
-          successSound.play();
-          first.div.classList.add("matched");
+        if(first.group===item.group){
           div.classList.add("matched");
+          first.div.classList.add("matched");
           scores[currentPlayer]++;
           totalMatch++;
-          const mineral = minerals.find(m=>m.group===item.group);
-          collectedCards[currentPlayer].push(mineral);
-          first=null;
-          lock=false;
+          first=null; lock=false;
           update();
-          updateCollected();
 
-          if(totalMatch === minerals.length * 2){
+          if(totalMatch===minerals.length){
             clearInterval(timer);
-            let max=Math.max(...scores);
-            let winners=customNames.filter((p,i)=>scores[i]===max);
-            alert(`🎉 게임 완료! 1등: ${winners.join(", ")} 🎉`);
+            alert("게임 완료! 제출 버튼 눌러!");
           }
+
         }else{
-          failSound.play();
           setTimeout(()=>{
-            first.div.innerText="?";
             div.innerText="?";
-            first.div.classList.remove("revealed");
+            first.div.innerText="?";
             div.classList.remove("revealed");
-            first=null;
-            lock=false;
+            first.div.classList.remove("revealed");
+            first=null; lock=false;
             currentPlayer=(currentPlayer+1)%players.length;
             update();
-          },800);
+          },600);
         }
       }
     };
@@ -217,23 +158,14 @@ function startGame(){
   });
 
   update();
+
   clearInterval(timer);
   timer=setInterval(()=>{
     timeLeft--;
     document.getElementById("timer").innerText=`남은 시간: ${timeLeft}초`;
     if(timeLeft<=0){
       clearInterval(timer);
-      let max=Math.max(...scores);
-      let winners=customNames.filter((p,i)=>scores[i]===max);
-      fetch("https://script.google.com/macros/s/AKfycby454SAjsLr7CUV8e7Ugdqb2TwPOxM2LSFiplVk0xRYAh_W1kDxiGaLlJpNZSVbYrqJjQ/exec", {
-  method: "POST",
-  body: JSON.stringify({
-    name: customNames.join(", "),
-    score: scores.join(", "),
-    time: timeLeft
-  })
-});
-      alert(`🎉 1등: ${winners.join(", ")} 🎉`);
+      alert("시간 종료! 제출 버튼 눌러!");
     }
   },1000);
 }
@@ -243,23 +175,30 @@ function update(){
   document.getElementById("score").innerText=customNames.map((p,i)=>`${p}:${scores[i]}`).join(" | ");
 }
 
-function updateCollected(){
-  const container=document.getElementById("collected");
-  container.innerHTML="";
-  let order = customNames.map((p,i)=>({p,i,score:scores[i]}))
-                         .sort((a,b)=>b.score-a.score);
-  order.forEach(o=>{
-    const box=document.createElement("div");
-    box.className="playerBox";
-    let title=`<b>${o.p} (${o.score}점)</b>`;
-    let row = `<div class="cardRow">`;
-    collectedCards[o.i].forEach(m=>{
-      row += `<div class="miniCard">${m.name}<br>${m.t1}<br>${m.t2}</div>`;
+function submitResult(){
+  if(submitted){
+    alert("이미 제출했어!");
+    return;
+  }
+
+  const className=document.getElementById("classInput").value||"미입력";
+  const number=document.getElementById("numInput").value||"미입력";
+
+  customNames.forEach((name,i)=>{
+    fetch(URL,{
+      method:"POST",
+      body:JSON.stringify({
+        class: className,
+        number: number,
+        name: name,
+        score: scores[i],
+        time: timeLeft
+      })
     });
-    row += "</div>";
-    box.innerHTML = title + row;
-    container.appendChild(box);
   });
+
+  submitted=true;
+  alert("제출 완료!");
 }
 </script>
 
